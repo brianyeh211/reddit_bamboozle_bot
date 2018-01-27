@@ -1,3 +1,4 @@
+import pprint
 import praw
 import logging
 import re
@@ -7,17 +8,16 @@ from pathlib import Path
 from PIL import Image
 import io
 
-logger = logging.getLogger('myapp')
-hdlr = logging.FileHandler('./myapp_log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.WARNING)
-# logger = logging.getLogger('prawcore')
-# logger.setLevel(logging.DEBUG)
-# logger.addHandler(handler)
-
-
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+                '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+handler.setFormatter(formatter)
+file_handler = logging.FileHandler('myapp_log')
+file_handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
 
 def resize(file):
     print("Resizing")
@@ -64,21 +64,13 @@ def process_images():
                 if (is_fictional_char is not True and is_link is not True):
                     print(labels)
                 print("########################")
-
-caps = "([A-Z])"
-prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
-suffixes = "(Inc|Ltd|Jr|Sr|Co)"
-starters = "(Mr|Mrs|Ms|Dr|He\s|She\s|It\s|They\s|Their\s|Our\s|We\s|But\s|However\s|That\s|This\s|Wherever)"
-acronyms = "([A-Z][.][A-Z][.](?:[A-Z][.])?)"
-websites = "[.](com|net|org|io|gov)"
-
-def main():
-    reddit = praw.Reddit('bamboozle_bot', user_agent='bamboozle_bot user agent')
-    subreddit = reddit.subreddit('test')
-    for comment in subreddit.stream.comments():
-            process_submission(comment)
-
 def split_into_sentences(text):
+    caps = "([A-Z])"
+    prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
+    suffixes = "(Inc|Ltd|Jr|Sr|Co)"
+    starters = "(Mr|Mrs|Ms|Dr|He\s|She\s|It\s|They\s|Their\s|Our\s|We\s|But\s|However\s|That\s|This\s|Wherever)"
+    acronyms = "([A-Z][.][A-Z][.](?:[A-Z][.])?)"
+    websites = "[.](com|net|org|io|gov)"
     text = " " + text + "  "
     text = text.replace("\n"," ")
     text = re.sub(prefixes,"\\1<prd>",text)
@@ -104,37 +96,52 @@ def split_into_sentences(text):
     return sentences
 
 def process_submission(comment):
-    if "link" in comment.body and "?" in comment.body:
-        sentences = split_into_sentences(comment.body)
-        for sentence in sentences:
-            if "?" in sentence and "link" in sentence:
-                # print("this is the sentence")
-                # print(sentence)
-                # print('replies')
-                # print(comment.refresh().replies.list())
+    if has_link_and_question(comment.body):
+        logger.info("Found comment asking for a link")
+        if has_link_and_question_in_sentence(comment.body):
+                # Save for now
+                logger.info("https://www.reddit.com" + comment.permalink)
                 for reply in comment.refresh().replies.list():
+                    logger.debug("All replies" + str(reply))
                     if has_hyperlink(reply.body):
-                        print(reply.body)
-    #print(split_into_sentences(submission.body))
-    # normalized_title = submission.title.lower()
-    # print(normalized_title)
-    # for question_phrase in QUESTIONS:
-    #     if question_phrase in normalized_title:
-    #         url_title = quote_plus(submission.title)
-    #         reply_text = REPLY_TEMPLATE.format(url_title)
-    #         print('Replying to: {}'.format(submission.title))
-    #         submission.reply(reply_text)
-    #         # A reply has been made so do not attempt to match other phrases.
-    #         break
+                        logger.info("Found one with link reply")
+                        logger.info("https://www.reddit.com" + reply.permalink)
+                        logger.info(reply.body)
+def has_link_and_question(text):
+    if "?" in text and "link" in text:
+        return True
+    else:
+        return False
+def has_link_and_question_in_sentence(text):
+    sentences = split_into_sentences(text)
+    for sentence in sentences:
+        if has_link_and_question(sentence):
+            return True
+        else:
+            return False
 #Find replies with links
 def has_hyperlink(text):
     has_hyperlink = False
     reddit_hyperlink_regex = ".*\[.*\]\(.*\).*"
     if re.match(reddit_hyperlink_regex, text):
-        print("Found a link reply")
-        logger.info("loggin info")
         has_hyperlink = True
-
+    logger.debug("This text has a link:" + text)
     return has_hyperlink
+
+def main():
+    reddit = praw.Reddit('bamboozle_bot', user_agent='bamboozle_bot user agent')
+    subreddit = reddit.subreddit('test')
+    for comment in subreddit.stream.comments():
+            if comment.is_root:
+                logger.info('This is a parent comment')
+                process_submission(comment)
+            else:
+                if has_hyperlink(comment.body):
+                    if has_link_and_question(comment.parent().body):
+                        process_submission(comment.parent())
+            #pprint.pprint(vars(comment))
+            print(comment.body)
+            process_submission(comment)
+
 if __name__ == '__main__':
     main()
