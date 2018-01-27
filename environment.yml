@@ -1,0 +1,9 @@
+name: C:\Users\Brian Yeh\Anaconda2\envs\reddit_bamboozle_bot_env
+dependencies:
+- pip=9.0.1=py34_1
+- python=3.4.5=0
+- setuptools=27.2.0=py34_1
+- vc=10=0
+- vs2010_runtime=10.00.40219.1=2
+- wheel=0.29.0=py34_0
+
