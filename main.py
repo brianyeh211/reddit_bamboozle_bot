@@ -1,3 +1,5 @@
+import time
+from prawcore.exceptions import PrawcoreException
 import pprint
 import praw
 import logging
@@ -134,8 +136,10 @@ def process_comment(comment):
 
 def main():
     reddit = praw.Reddit('bamboozle_bot', user_agent='bamboozle_bot user agent')
-    subreddit = reddit.subreddit('test')
+    subreddit = reddit.subreddit('all')
+
     for comment in subreddit.stream.comments():
+        try:
             logger.info(comment.body)
             if comment.is_root:
                 logger.info('This is a parent comment')
@@ -146,7 +150,14 @@ def main():
                     while not comment.is_root:
                         process_comment(comment)
                         comment = comment.parent()
+            time.sleep(0.01)
             #pprint.pprint(vars(comment))
+        except PrawcoreException as e:
+            logger.warn("Prawcore Exception:")
+            logger.warn(str(e))
+            time.sleep(10)
+        except KeyboardInterrupt as e:
+            logger.warn("Keyboard interrupt")
 
 
 if __name__ == '__main__':
