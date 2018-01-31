@@ -131,8 +131,8 @@ def process_comment(comment):
     logger.info("Processing comment")
     if has_hyperlink(comment.body) and has_link_and_question_in_sentence(comment.parent().body):
             logger.info("Saving this")
-            logger.warning("https://www.reddit.com" + comment.permalink)
-            logger.warning(comment.body)
+            with open("comments.txt", 'a') as out:
+                out.write("https://www.reddit.com" + comment.permalink)
 
 def main():
     reddit = praw.Reddit('bamboozle_bot', user_agent='bamboozle_bot user agent')
