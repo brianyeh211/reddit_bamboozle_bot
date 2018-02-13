@@ -1,3 +1,5 @@
+import random
+import urllib.request
 import time
 from prawcore.exceptions import PrawcoreException
 import pprint
@@ -127,13 +129,24 @@ def has_hyperlink(text):
         has_hyperlink = True
         logger.info("This text has a link:" + text)
     return has_hyperlink
+def get_link(s):
+    return s[s.find('(')+len('('):s.rfind(')')] 
+def is_pic_file(text):
+    if text.find('.png') != -1 or text.find('.jpg') != -1 or text.find('jpeg') != -1:
+        return True
+    else:
+        return False
 def process_comment(comment):
     logger.info("Processing comment")
     if has_hyperlink(comment.body) and has_link_and_question_in_sentence(comment.parent().body):
             logger.info("Saving this")
             with open("comments.txt", 'a') as out:
-                out.write("https://www.reddit.com" + comment.permalink)
-
+                if is_pic_file(get_link(comment.body)):
+                    a = str(random.randint(0,10000))
+                    out.write("https://www.reddit.com" + comment.permalink + "\n")
+                    link = get_link(comment.body)
+                    out.write(link)
+                    urllib.request.urlretrieve(link,"./pics/" + a)
 def main():
     reddit = praw.Reddit('bamboozle_bot', user_agent='bamboozle_bot user agent')
     subreddit = reddit.subreddit('all')
@@ -150,7 +163,7 @@ def main():
                     while not comment.is_root:
                         process_comment(comment)
                         comment = comment.parent()
-            time.sleep(0.01)
+            time.sleep(0.1)
             #pprint.pprint(vars(comment))
         except PrawcoreException as e:
             logger.warn("Prawcore Exception:")
